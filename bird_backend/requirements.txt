@@ -1,0 +1,11 @@
+Flask
+torch
+torchvision
+timm
+google-cloud-storage
+Pillow
+numpy==1.24.3
+google-cloud-firestore
+flask-cors
+opencv-python-headless
+pandas

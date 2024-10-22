@@ -1,0 +1,43 @@
+source bird_env/bin/activate to enter the virtual environment, install packages , etc, 
+deactivate to leave venv and use docker/git
+
+
+To run the Flask file locally:
+
+python app.py to run on locahost
+
+
+This should be like; Fusing layers... 
+YOLOv5s summary: 213 layers, 7225885 parameters, 0 gradients, 16.4 GFLOPs
+Adding AutoShape... 
+Model loaded and ready for inference.
+ * Serving Flask app 'app'
+ * Debug mode: on
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:8080
+ * Running on http://10.0.0.202:8080
+Press CTRL+C to quit
+ * Restarting with stat
+Using cache found in /Users/robertsneiderman/.cache/torch/hub/ultralytics_yolov5_master
+YOLOv5 🚀 2024-10-21 Python-3.11.0 torch-2.2.2 CPU
+
+Fusing layers... 
+YOLOv5s summary: 213 layers, 7225885 parameters, 0 gradients, 16.4 GFLOPs
+Adding AutoShape... 
+Model loaded and ready for inference.
+ * Debugger is active!
+ * Debugger PIN: 998-162-644
+
+To test the api call the predict route on test image like this outside the venv;
+
+curl -v -X POST -F 'file=@./test_images/American_Goldfinch_0018_32324.jpg' http://localhost:8080/predict
+
+
+To deploy changes to docker/production:
+
+
+For updatting the github on backend files:
+
+Debugging: If not working locally try deleting and rebuilding venv, reinstall/check the requirements.txt and redownload them in the new venv
+
