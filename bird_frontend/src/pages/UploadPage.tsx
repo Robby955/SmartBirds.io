@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Container,
   Typography,
@@ -9,6 +9,7 @@ import {
   TextField,
   Paper,
   Stack,
+  Autocomplete,
 } from '@mui/material';
 import { styled } from '@mui/system';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
@@ -44,6 +45,41 @@ const UploadPage: React.FC = () => {
   const [feedback, setFeedback] = useState<string>('');
   const [submittedFeedback, setSubmittedFeedback] = useState<boolean>(false);
   const [imageLoaded, setImageLoaded] = useState<boolean>(false);
+  const [speciesOptions, setSpeciesOptions] = useState<string[]>([]);
+  const [actualSpecies, setActualSpecies] = useState<string | null>(null);
+  const [userKnowsSpecies, setUserKnowsSpecies] = useState<boolean | null>(null);
+  const [showFeedbackForm, setShowFeedbackForm] = useState<boolean>(false);
+
+  // Fetch species list from the URL and process it
+  useEffect(() => {
+    const fetchSpeciesOptions = async () => {
+      try {
+        const response = await fetch('https://storage.googleapis.com/smartbirds-assets/classes.txt');
+        const textData = await response.text();
+
+        // Process the text data
+        const speciesArray = textData
+          .split('\n')
+          .map((line) => line.trim())
+          .filter((line) => line.length > 0)
+          .map((line) => {
+            // Remove leading numbers and dots
+            const nameWithNumber = line.split(' ')[1];
+            const name = nameWithNumber.replace(/^\d+\./, '');
+            // Replace underscores with spaces
+            return name.replace(/_/g, ' ');
+          });
+
+        // Add "Other" option
+        speciesArray.push('Other');
+
+        setSpeciesOptions(speciesArray);
+      } catch (err) {
+        console.error('Error fetching species options:', err);
+      }
+    };
+    fetchSpeciesOptions();
+  }, []);
 
   const imageRef = useRef<HTMLImageElement>(null);
   const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
@@ -58,6 +94,9 @@ const UploadPage: React.FC = () => {
       setFeedback('');
       setSubmittedFeedback(false);
       setImageLoaded(false);
+      setActualSpecies(null);
+      setUserKnowsSpecies(null);
+      setShowFeedbackForm(false);
 
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -112,6 +151,7 @@ const UploadPage: React.FC = () => {
 
       if (data.bounding_box) {
         setPrediction(data);
+        // You can fetch attention map here if needed
       } else {
         setError('No bird detected in the image.');
       }
@@ -127,9 +167,34 @@ const UploadPage: React.FC = () => {
     }
   };
 
-  const handleFeedbackSubmit = () => {
-    console.log('User feedback:', feedback);
+  const handleReset = () => {
+    setImage(null);
+    setPreviewUrl(null);
+    setPrediction(null);
+    setError(null);
+    setFeedback('');
+    setSubmittedFeedback(false);
+    setImageLoaded(false);
+    setActualSpecies(null);
+    setUserKnowsSpecies(null);
+    setShowFeedbackForm(false);
+  };
+
+  const handleFeedbackSubmit = async () => {
+    // Prepare feedback data
+    const feedbackData = {
+      predicted_class: prediction?.predicted_class,
+      user_knows_species: userKnowsSpecies,
+      actual_species: actualSpecies || null,
+      user_feedback: feedback || null,
+      timestamp: new Date().toISOString(),
+    };
+
+    console.log('User feedback:', feedbackData);
+
+    // Simulate successful feedback submission
     setSubmittedFeedback(true);
+    setShowFeedbackForm(false);
   };
 
   const handleImageLoad = () => {
@@ -171,150 +236,223 @@ const UploadPage: React.FC = () => {
   };
 
   return (
-    <Container
-      maxWidth="md"
+    // Outer Box with background image
+    <Box
       sx={{
+        backgroundImage: `url('/mybird.jpg')`, // Replace with your image
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        minHeight: '100vh',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
         padding: '40px',
-        backgroundColor: '#ffffff',
-        borderRadius: '12px',
-        boxShadow: 3,
-        textAlign: 'center',
       }}
     >
-      <Typography variant="h3" align="center" gutterBottom color="primary">
-        Bird Identification
-      </Typography>
-      <Box display="flex" flexDirection="column" alignItems="center" mt={4}>
-        <StyledDropzone {...getRootProps()} elevation={isDragActive ? 6 : 3} sx={{ width: '100%' }}>
-          <input {...getInputProps()} />
-          <CloudUploadIcon sx={{ fontSize: 60, mb: 2 }} />
-          <Typography variant="h6" color="inherit">
-            {isDragActive ? 'Drop the image here...' : 'Drag and drop an image here, or click to select one'}
-          </Typography>
-          {image && (
-            <Typography variant="body2" sx={{ mt: 1 }}>
-              Selected File: {image.name}
+      <Container
+        maxWidth="md"
+        sx={{
+          padding: '40px',
+          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+          borderRadius: '12px',
+          boxShadow: 3,
+          textAlign: 'center',
+        }}
+      >
+        <Typography variant="h3" align="center" gutterBottom color="primary">
+          Bird Identification
+        </Typography>
+        <Box display="flex" flexDirection="column" alignItems="center" mt={4}>
+          <StyledDropzone {...getRootProps()} elevation={isDragActive ? 6 : 3} sx={{ width: '100%' }}>
+            <input {...getInputProps()} />
+            <CloudUploadIcon sx={{ fontSize: 60, mb: 2 }} />
+            <Typography variant="h6" color="inherit">
+              {isDragActive ? 'Drop the image here...' : 'Drag and drop an image here, or click to select one'}
             </Typography>
-          )}
-        </StyledDropzone>
-
-        {previewUrl && (
-          <Box
-            sx={{
-              position: 'relative',
-              width: '100%',
-              maxHeight: '600px',
-              overflow: 'hidden',
-              borderRadius: '12px',
-              boxShadow: 2,
-              mt: 3,
-            }}
-          >
-            <img
-              ref={imageRef}
-              src={previewUrl}
-              alt="Uploaded Preview"
-              style={{
-                width: '100%',
-                height: 'auto',
-                display: 'block',
-                borderRadius: '12px',
-              }}
-              onLoad={handleImageLoad}
-            />
-            {prediction?.bounding_box && imageDimensions && naturalDimensions && (
-              <Box
-                sx={{
-                  position: 'absolute',
-                  border: '3px solid red',
-                  backgroundColor: 'rgba(255, 0, 0, 0.2)',
-                  left: `${getBoundingBoxStyles().left}`,
-                  top: `${getBoundingBoxStyles().top}`,
-                  width: `${getBoundingBoxStyles().width}`,
-                  height: `${getBoundingBoxStyles().height}`,
-                  boxSizing: 'border-box',
-                  pointerEvents: 'none',
-                }}
-              />
+            {image && (
+              <Typography variant="body2" sx={{ mt: 1 }}>
+                Selected File: {image.name}
+              </Typography>
             )}
-          </Box>
-        )}
+          </StyledDropzone>
 
-        <Stack direction="row" spacing={2} mt={3}>
-          <Button
-            variant="contained"
-            color="secondary"
-            onClick={handlePrediction}
-            disabled={loading || !image || !imageLoaded}
-            sx={{ padding: '12px 36px', fontSize: '16px' }}
-          >
-            {loading ? <CircularProgress size={24} color="inherit" /> : 'Predict'}
-          </Button>
-        </Stack>
-      </Box>
-
-      {error && (
-        <Alert severity="error" sx={{ mt: 4 }}>
-          {error}
-        </Alert>
-      )}
-
-      {prediction && (
-        <Box sx={{ mt: 6 }}>
-          <Typography variant="h4" gutterBottom color="textPrimary">
-            Prediction Results
-          </Typography>
-          <Typography variant="h6" gutterBottom>
-            <strong>Species:</strong> {prediction.predicted_class}
-          </Typography>
-          <Typography variant="h6" gutterBottom>
-            <strong>Confidence:</strong> {prediction.confidence}
-          </Typography>
-
-          {prediction.bounding_box && (
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="body1" gutterBottom>
-                <strong>Bounding Box Coordinates:</strong>
-              </Typography>
-              <Typography variant="body2">
-                X1: {prediction.bounding_box[0]}, Y1: {prediction.bounding_box[1]}
-              </Typography>
-              <Typography variant="body2">
-                X2: {prediction.bounding_box[2]}, Y2: {prediction.bounding_box[3]}
-              </Typography>
-              <Typography variant="body2">
-                Confidence: {prediction.bounding_box[4].toFixed(2)}
-              </Typography>
+          {previewUrl && (
+            <Box
+              sx={{
+                position: 'relative',
+                width: '100%',
+                maxHeight: '600px',
+                overflow: 'hidden',
+                borderRadius: '12px',
+                boxShadow: 2,
+                mt: 3,
+              }}
+            >
+              <img
+                ref={imageRef}
+                src={previewUrl}
+                alt="Uploaded Preview"
+                style={{
+                  width: '100%',
+                  height: 'auto',
+                  display: 'block',
+                  borderRadius: '12px',
+                }}
+                onLoad={handleImageLoad}
+              />
+              {prediction?.bounding_box && imageDimensions && naturalDimensions && (
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    border: '3px solid red',
+                    backgroundColor: 'rgba(255, 0, 0, 0.2)',
+                    left: `${getBoundingBoxStyles().left}`,
+                    top: `${getBoundingBoxStyles().top}`,
+                    width: `${getBoundingBoxStyles().width}`,
+                    height: `${getBoundingBoxStyles().height}`,
+                    boxSizing: 'border-box',
+                    pointerEvents: 'none',
+                  }}
+                />
+              )}
             </Box>
           )}
 
-          <Box sx={{ mt: 4, maxWidth: '600px', margin: '0 auto' }}>
-            <Typography variant="h6" gutterBottom>
-              Was this prediction correct?
-            </Typography>
-            <TextField
-              label="Enter feedback (optional)"
-              variant="outlined"
-              fullWidth
-              multiline
-              rows={3}
-              value={feedback}
-              onChange={(e) => setFeedback(e.target.value)}
-              sx={{ mb: 2 }}
-            />
+          <Stack direction="row" spacing={2} mt={3}>
             <Button
               variant="contained"
-              color="primary"
-              onClick={handleFeedbackSubmit}
-              disabled={submittedFeedback}
-              sx={{ padding: '10px 20px', fontSize: '16px' }}
+              color="secondary"
+              onClick={handlePrediction}
+              disabled={loading || !image || !imageLoaded}
+              sx={{ padding: '12px 36px', fontSize: '16px' }}
             >
-              {submittedFeedback ? 'Feedback Submitted' : 'Submit Feedback'}
+              {loading ? <CircularProgress size={24} color="inherit" /> : 'Predict'}
             </Button>
-          </Box>
+            <Button
+              variant="outlined"
+              color="error"
+              onClick={handleReset}
+              disabled={loading || !image}
+              sx={{ padding: '12px 36px', fontSize: '16px' }}
+            >
+              Reset
+            </Button>
+          </Stack>
         </Box>
-      )}
-    </Container>
+
+        {error && (
+          <Alert severity="error" sx={{ mt: 4 }}>
+            {error}
+          </Alert>
+        )}
+
+        {prediction && (
+          <Box sx={{ mt: 6 }}>
+            <Typography variant="h4" gutterBottom color="textPrimary">
+              Prediction Results
+            </Typography>
+            <Typography variant="h6" gutterBottom>
+              <strong>Predicted Species:</strong> {prediction.predicted_class}
+            </Typography>
+            <Typography variant="h6" gutterBottom>
+              <strong>Confidence:</strong> {prediction.confidence}
+            </Typography>
+
+            {!submittedFeedback ? (
+              <>
+                {!showFeedbackForm ? (
+                  <Box sx={{ mt: 4, maxWidth: '600px', margin: '0 auto', textAlign: 'left' }}>
+                    <Typography variant="h6" gutterBottom>
+                      Do you know the actual species of this bird?
+                    </Typography>
+
+                    <Stack spacing={2} direction="row" sx={{ mb: 2 }}>
+                      <Button
+                        variant={userKnowsSpecies === true ? 'contained' : 'outlined'}
+                        color="success"
+                        onClick={() => {
+                          setUserKnowsSpecies(true);
+                          setShowFeedbackForm(true);
+                        }}
+                        sx={{ width: '100%' }}
+                      >
+                        Yes
+                      </Button>
+                      <Button
+                        variant={userKnowsSpecies === false ? 'contained' : 'outlined'}
+                        color="primary"
+                        onClick={() => {
+                          setUserKnowsSpecies(false);
+                          handleFeedbackSubmit();
+                        }}
+                        sx={{ width: '100%' }}
+                      >
+                        No
+                      </Button>
+                    </Stack>
+                  </Box>
+                ) : (
+                  // Feedback form when user knows the species
+                  <Box sx={{ mt: 4, maxWidth: '600px', margin: '0 auto', textAlign: 'left' }}>
+                    <Typography variant="body1" gutterBottom>
+                      Please select the actual species:
+                    </Typography>
+                    <Autocomplete
+                      options={speciesOptions}
+                      getOptionLabel={(option) => option}
+                      value={actualSpecies}
+                      onChange={(event, newValue) => {
+                        setActualSpecies(newValue);
+                      }}
+                      renderInput={(params) => (
+                        <TextField {...params} label="Actual Species" variant="outlined" />
+                      )}
+                      sx={{ mb: 2 }}
+                      // Allow free text input if "Other" is selected
+                      freeSolo={actualSpecies === 'Other'}
+                    />
+                    {actualSpecies === 'Other' && (
+                      <TextField
+                        label="Please specify the species"
+                        variant="outlined"
+                        fullWidth
+                        value={actualSpecies}
+                        onChange={(e) => setActualSpecies(e.target.value)}
+                        sx={{ mb: 2 }}
+                      />
+                    )}
+                    <TextField
+                      label="Additional Comments (optional)"
+                      variant="outlined"
+                      fullWidth
+                      multiline
+                      rows={3}
+                      value={feedback}
+                      onChange={(e) => setFeedback(e.target.value)}
+                      sx={{ mb: 2 }}
+                    />
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      onClick={handleFeedbackSubmit}
+                      disabled={submittedFeedback}
+                      sx={{ padding: '10px 20px', fontSize: '16px' }}
+                    >
+                      Submit Feedback
+                    </Button>
+                  </Box>
+                )}
+              </>
+            ) : (
+              <Alert severity="success" sx={{ mt: 4 }}>
+                Thank you for your feedback!
+              </Alert>
+            )}
+          </Box>
+        )}
+      </Container>
+    </Box>
   );
 };
 
