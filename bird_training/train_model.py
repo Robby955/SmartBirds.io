@@ -1,3 +1,5 @@
+
+# authenticate first to the cloud account, then, this was ran on Colab
 from google.cloud import storage
 
 # Initialize the Google Cloud Storage client
