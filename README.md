@@ -10,7 +10,7 @@
 
 Welcome to **SmartBirds.io**! This application offers a free and efficient solution for bird detection and classification, leveraging a vision transformer (ViT) for accurate identification of various bird species. 
 
-[![Watch the demo video](https://github.com/Robby955/SmartBirds.io/blob/main/images/predictlanding.png)](https://storage.googleapis.com/smartbirds-assets/demo_files/SmartBirds_Demo.mp4)
+Click here for the demo video: [![Watch the demo video](https://github.com/Robby955/SmartBirds.io/blob/main/images/predictlanding.png)](https://storage.googleapis.com/smartbirds-assets/demo_files/SmartBirds_Demo.mp4)
 ---
 
 ## Features
